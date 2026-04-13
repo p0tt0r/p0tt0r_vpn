@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id            String         @id @default(cuid())
+  telegramId    String?        @unique
+  username      String?
+  vpnUuid       String?        @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+}
+
+model Plan {
+  id             String         @id @default(cuid())
+  name           String
+  durationDays   Int
+  trafficLimitGb Int
+  priceRub       Int
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  subscriptions  Subscription[]
+}
+
+model Subscription {
+  id         String   @id @default(cuid())
+  userId     String
+  planId     String
+  status     String
+  startsAt   DateTime
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+}
