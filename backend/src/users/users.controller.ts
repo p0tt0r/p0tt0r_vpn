@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Body, Post, Header } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, Post } from '@nestjs/common';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -19,14 +19,20 @@ export class UsersController {
   getUserSubscription(@Param('id') id: string) {
     return this.usersService.getActiveSubscription(id);
   }
-  @Get(':id/access')
-getUserAccess(@Param('id') id: string) {
-  return this.usersService.getAccess(id);
-}
-@Get(':id/subscription-url')
-@Header('Content-Type', 'text/plain; charset=utf-8')
-getSubscriptionUrl(@Param('id') id: string) {
-  return this.usersService.getSubscriptionUrl(id);
-}
 
+  @Get(':id/access')
+  getUserAccess(@Param('id') id: string) {
+    return this.usersService.getAccess(id);
+  }
+
+  @Get(':id/subscription-url')
+  @Header('Content-Type', 'text/plain; charset=utf-8')
+  getSubscriptionUrl(@Param('id') id: string) {
+    return this.usersService.getSubscriptionUrl(id);
+  }
+
+  @Get(':id/vpn-status')
+  getUserVpnStatus(@Param('id') id: string) {
+    return this.usersService.getUserVpnStatus(id);
+  }
 }

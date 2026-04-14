@@ -86,4 +86,8 @@ export class UsersService {
   async getSubscriptionUrl(userId: string) {
     return this.vpnService.getSubscriptionUrl(userId);
   }
+
+  async getUserVpnStatus(userId: string) {
+    return this.vpnService.getUserVpnStatus(userId);
+  }
 }

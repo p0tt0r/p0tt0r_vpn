@@ -120,4 +120,72 @@ export class VpnService {
 
     return this.buildLink(vpnUuid, `VPN-${user.username ?? user.id}`) + '\n';
   }
+
+  async getSystemStatus() {
+    const now = new Date();
+
+    const activeSubscriptions = await this.prisma.subscription.count({
+      where: {
+        status: 'active',
+        expiresAt: {
+          gt: now,
+        },
+      },
+    });
+
+    const sshResult = await this.sshService.getXrayStatus();
+
+    const xrayRunning = sshResult.includes('active');
+    const clientsCountMatch = sshResult.match(/CLIENTS_COUNT=(\d+)/);
+    const configuredClients = clientsCountMatch
+      ? Number(clientsCountMatch[1])
+      : 0;
+
+    return {
+      xrayRunning,
+      configuredClients,
+      activeSubscriptions,
+      checkedAt: new Date().toISOString(),
+    };
+  }
+
+  async getUserVpnStatus(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const subscription = await this.prisma.subscription.findFirst({
+      where: {
+        userId,
+        status: 'active',
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    let existsInXrayConfig = false;
+
+    if (user.vpnUuid) {
+      const sshResult = await this.sshService.hasClient(user.vpnUuid);
+      existsInXrayConfig = sshResult.includes('FOUND=true');
+    }
+
+    return {
+      userId: user.id,
+      telegramId: user.telegramId,
+      username: user.username,
+      hasActiveSubscription: !!subscription,
+      vpnUuid: user.vpnUuid,
+      existsInXrayConfig,
+      expiresAt: subscription?.expiresAt ?? null,
+    };
+  }
 }
