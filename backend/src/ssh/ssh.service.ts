@@ -63,7 +63,9 @@ export class SshService {
   }
 
   async syncXrayClients(clients: XrayClient[]) {
-    const payload = Buffer.from(JSON.stringify(clients), 'utf8').toString('base64');
+    const payload = Buffer.from(JSON.stringify(clients), 'utf8').toString(
+      'base64',
+    );
 
     const command = `
 python3 - <<'PY'
@@ -91,6 +93,49 @@ PY
 /usr/local/bin/xray run -test -config /usr/local/etc/xray/config.json
 systemctl restart xray
 systemctl is-active xray
+`;
+
+    return this.execCommand(command);
+  }
+
+  async getXrayStatus() {
+    const command = `
+systemctl is-active xray
+python3 - <<'PY'
+import json
+
+clients_path = "/usr/local/etc/xray/clients.json"
+
+try:
+    with open(clients_path, "r", encoding="utf-8") as f:
+        clients = json.load(f)
+    print("CLIENTS_COUNT=" + str(len(clients)))
+except Exception:
+    print("CLIENTS_COUNT=0")
+PY
+`;
+
+    return this.execCommand(command);
+  }
+
+  async hasClient(uuid: string) {
+    const escapedUuid = uuid.replace(/"/g, '\\"');
+
+    const command = `
+python3 - <<'PY'
+import json
+
+uuid = "${escapedUuid}"
+clients_path = "/usr/local/etc/xray/clients.json"
+
+try:
+    with open(clients_path, "r", encoding="utf-8") as f:
+        clients = json.load(f)
+    exists = any(c.get("id") == uuid for c in clients)
+    print("FOUND=" + ("true" if exists else "false"))
+except Exception:
+    print("FOUND=false")
+PY
 `;
 
     return this.execCommand(command);
