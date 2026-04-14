@@ -92,65 +92,158 @@ export class BotService implements OnModuleInit {
     });
 
     this.bot.action(/buy_(.+)/, async (ctx) => {
-      try {
-        const planId = ctx.match[1];
-        const telegramId = String(ctx.from?.id ?? '');
-        const username = ctx.from?.username ?? ctx.from?.first_name ?? 'user';
+  try {
+    const planId = ctx.match[1];
+    const telegramId = String(ctx.from?.id ?? '');
+    const username = ctx.from?.username ?? ctx.from?.first_name ?? 'user';
 
-        let user = await this.usersService.findByTelegramId(telegramId);
+    let user = await this.usersService.findByTelegramId(telegramId);
 
-        if (!user) {
-          user = await this.usersService.create({
-            telegramId,
-            username,
-          });
-        }
+    if (!user) {
+      user = await this.usersService.create({
+        telegramId,
+        username,
+      });
+    }
 
-        const plan = await this.prisma.plan.findUnique({
-          where: { id: planId },
-        });
-
-        if (!plan) {
-          await ctx.reply('Тариф не найден.');
-          return;
-        }
-
-        const now = new Date();
-        const expiresAt = new Date(
-          now.getTime() + plan.durationDays * 24 * 60 * 60 * 1000,
-        );
-
-        await this.prisma.subscription.updateMany({
-          where: {
-            userId: user.id,
-            status: 'active',
-          },
-          data: {
-            status: 'expired',
-          },
-        });
-
-        await this.prisma.subscription.create({
-          data: {
-            userId: user.id,
-            planId: plan.id,
-            status: 'active',
-            startsAt: now,
-            expiresAt,
-          },
-        });
-
-        await ctx.reply(
-          `🎉 Подписка оформлена!\n\n` +
-            `Тариф: ${plan.name}\n` +
-            `До: ${expiresAt.toLocaleString('ru-RU')}`,
-        );
-      } catch (error) {
-        console.error('Buy error:', error);
-        await ctx.reply('Ошибка при оформлении подписки.');
-      }
+    const plan = await this.prisma.plan.findUnique({
+      where: { id: planId },
     });
 
+    if (!plan) {
+      await ctx.reply('Тариф не найден.');
+      return;
+    }
+
+    const activeSubscription = await this.prisma.subscription.findFirst({
+      where: {
+        userId: user.id,
+        status: 'active',
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        plan: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (activeSubscription) {
+      await ctx.reply(
+        `У тебя уже есть активная подписка ${activeSubscription.plan.name}\n` +
+          `Действует до: ${new Date(activeSubscription.expiresAt).toLocaleString('ru-RU')}\n\n` +
+          `Хочешь продлить её ещё на ${plan.durationDays} дней?`,
+        Markup.inlineKeyboard([
+          [
+            Markup.button.callback(
+              `✅ Продлить ${plan.name}`,
+              `extend_${plan.id}`,
+            ),
+          ],
+          [Markup.button.callback('❌ Отмена', 'extend_cancel')],
+        ]),
+      );
+      return;
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(
+      now.getTime() + plan.durationDays * 24 * 60 * 60 * 1000,
+    );
+
+    await this.prisma.subscription.create({
+      data: {
+        userId: user.id,
+        planId: plan.id,
+        status: 'active',
+        startsAt: now,
+        expiresAt,
+      },
+    });
+
+    await ctx.reply(
+      `🎉 Подписка оформлена!\n\n` +
+        `Тариф: ${plan.name}\n` +
+        `До: ${expiresAt.toLocaleString('ru-RU')}`,
+    );
+  } catch (error) {
+    console.error('Buy error:', error);
+    await ctx.reply('Ошибка при оформлении подписки.');
+  }
+});
+
+this.bot.action(/extend_(.+)/, async (ctx) => {
+  try {
+    const planId = ctx.match[1];
+    const telegramId = String(ctx.from?.id ?? '');
+
+    const user = await this.usersService.findByTelegramId(telegramId);
+
+    if (!user) {
+      await ctx.reply('Пользователь не найден.');
+      return;
+    }
+
+    const plan = await this.prisma.plan.findUnique({
+      where: { id: planId },
+    });
+
+    if (!plan) {
+      await ctx.reply('Тариф не найден.');
+      return;
+    }
+
+    const activeSubscription = await this.prisma.subscription.findFirst({
+      where: {
+        userId: user.id,
+        status: 'active',
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        plan: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!activeSubscription) {
+      await ctx.reply('Активная подписка не найдена.');
+      return;
+    }
+
+    const currentExpiry = new Date(activeSubscription.expiresAt);
+    const newExpiresAt = new Date(
+      currentExpiry.getTime() + plan.durationDays * 24 * 60 * 60 * 1000,
+    );
+
+    await this.prisma.subscription.update({
+      where: {
+        id: activeSubscription.id,
+      },
+      data: {
+        expiresAt: newExpiresAt,
+      },
+    });
+
+    await ctx.reply(
+      `✅ Подписка продлена!\n\n` +
+        `Тариф: ${activeSubscription.plan.name}\n` +
+        `Теперь действует до: ${newExpiresAt.toLocaleString('ru-RU')}`,
+    );
+  } catch (error) {
+    console.error('Extend error:', error);
+    await ctx.reply('Ошибка при продлении подписки.');
+  }
+});
+this.bot.action('extend_cancel', async (ctx) => {
+  await ctx.reply('Продление отменено.');
+});
     this.bot.hears('👤 Моя подписка', async (ctx) => {
       try {
         const telegramId = String(ctx.from?.id ?? '');
