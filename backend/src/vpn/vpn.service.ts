@@ -5,24 +5,41 @@ import { SshService } from '../ssh/ssh.service';
 
 @Injectable()
 export class VpnService {
-  private readonly IP = '89.169.13.13';
-  private readonly PUBLIC_KEY = 'CDCuL9OR80v0M8qo3HyYYpWOWNoiLe7RPaq4Jw9mRVA';
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly sshService: SshService,
   ) {}
 
+  private get vpnHost() {
+    return process.env.VPN_HOST!;
+  }
+
+  private get vpnPort() {
+    return Number(process.env.VPN_PORT!);
+  }
+
+  private get vpnSni() {
+    return process.env.VPN_SNI!;
+  }
+
+  private get vpnPublicKey() {
+    return process.env.VPN_PUBLIC_KEY!;
+  }
+
+  private get vpnShortId() {
+    return process.env.VPN_SHORT_ID!;
+  }
+
   private buildLink(vpnUuid: string, label: string) {
     return (
-      `vless://${vpnUuid}@${this.IP}:443` +
+      `vless://${vpnUuid}@${this.vpnHost}:${this.vpnPort}` +
       `?encryption=none` +
       `&security=reality` +
       `&type=tcp` +
-      `&sni=www.google.com` +
+      `&sni=${this.vpnSni}` +
       `&fp=chrome` +
-      `&pbk=${this.PUBLIC_KEY}` +
-      `&sid=abcd1234` +
+      `&pbk=${this.vpnPublicKey}` +
+      `&sid=${this.vpnShortId}` +
       `&flow=xtls-rprx-vision#${encodeURIComponent(label)}`
     );
   }

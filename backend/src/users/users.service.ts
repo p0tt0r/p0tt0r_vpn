@@ -90,4 +90,140 @@ export class UsersService {
   async getUserVpnStatus(userId: string) {
     return this.vpnService.getUserVpnStatus(userId);
   }
+
+  async getClientConfig(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return {
+        hasAccess: false,
+        message: 'User not found',
+        config: null,
+      };
+    }
+
+    const subscription = await this.prisma.subscription.findFirst({
+      where: {
+        userId,
+        status: 'active',
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        plan: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!subscription) {
+      return {
+        hasAccess: false,
+        message: 'No active subscription',
+        config: null,
+      };
+    }
+
+    if (!user.vpnUuid) {
+      return {
+        hasAccess: false,
+        message: 'VPN UUID not found',
+        config: null,
+      };
+    }
+
+    const vpnHost = process.env.VPN_HOST!;
+    const vpnPort = Number(process.env.VPN_PORT!);
+    const sni = process.env.VPN_SNI!;
+    const publicKey = process.env.VPN_PUBLIC_KEY!;
+    const shortId = process.env.VPN_SHORT_ID!;
+
+    const routeRules =
+      user.routingMode === 'ru_direct'
+        ? [
+            {
+              geoip: ['private', 'ru'],
+              outbound: 'direct',
+            },
+            {
+              geosite: ['ru'],
+              outbound: 'direct',
+            },
+          ]
+        : [];
+
+    const config = {
+      log: {
+        level: 'info',
+      },
+      dns: {
+        servers: [
+          {
+            tag: 'dns-remote',
+            address: 'https://1.1.1.1/dns-query',
+            detour: 'proxy',
+          },
+          {
+            tag: 'dns-direct',
+            address: 'local',
+            detour: 'direct',
+          },
+        ],
+        final: 'dns-remote',
+      },
+      inbounds: [
+        {
+          type: 'mixed',
+          tag: 'mixed-in',
+          listen: '127.0.0.1',
+          listen_port: 2080,
+        },
+      ],
+      outbounds: [
+        {
+          type: 'vless',
+          tag: 'proxy',
+          server: vpnHost,
+          server_port: vpnPort,
+          uuid: user.vpnUuid,
+          flow: 'xtls-rprx-vision',
+          tls: {
+            enabled: true,
+            server_name: sni,
+            reality: {
+              enabled: true,
+              public_key: publicKey,
+              short_id: shortId,
+            },
+          },
+          transport: {
+            type: 'tcp',
+          },
+        },
+        {
+          type: 'direct',
+          tag: 'direct',
+        },
+        {
+          type: 'block',
+          tag: 'block',
+        },
+      ],
+      route: {
+        auto_detect_interface: true,
+        rules: routeRules,
+        final: 'proxy',
+      },
+    };
+
+    return {
+      hasAccess: true,
+      message: 'Client config generated',
+      config,
+    };
+  }
 }

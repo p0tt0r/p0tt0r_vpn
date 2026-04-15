@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -26,7 +26,6 @@ export class UsersController {
   }
 
   @Get(':id/subscription-url')
-  @Header('Content-Type', 'text/plain; charset=utf-8')
   getSubscriptionUrl(@Param('id') id: string) {
     return this.usersService.getSubscriptionUrl(id);
   }
@@ -34,5 +33,10 @@ export class UsersController {
   @Get(':id/vpn-status')
   getUserVpnStatus(@Param('id') id: string) {
     return this.usersService.getUserVpnStatus(id);
+  }
+
+  @Get(':id/client-config')
+  getClientConfig(@Param('id') id: string) {
+    return this.usersService.getClientConfig(id);
   }
 }
