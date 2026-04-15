@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { VpnModule } from './vpn/vpn.module';
 import { BotModule } from './bot/bot.module';
+import { DeployModule } from './deploy/deploy.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { BotModule } from './bot/bot.module';
     SubscriptionsModule,
     VpnModule,
     BotModule,
+    DeployModule,
   ],
   controllers: [AppController],
   providers: [AppService],
