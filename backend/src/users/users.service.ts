@@ -142,19 +142,20 @@ export class UsersService {
     const publicKey = process.env.VPN_PUBLIC_KEY!;
     const shortId = process.env.VPN_SHORT_ID!;
 
-    const routeRules =
-      user.routingMode === 'ru_direct'
-        ? [
-            {
-              geoip: ['private', 'ru'],
-              outbound: 'direct',
-            },
-            {
-              geosite: ['ru'],
-              outbound: 'direct',
-            },
-          ]
-        : [];
+    const routeRules = [
+  {
+    ip_cidr: ['127.0.0.0/8', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
+    outbound: 'direct',
+  },
+  {
+    geoip: ['private', 'ru'],
+    outbound: 'direct',
+  },
+  {
+    geosite: ['ru'],
+    outbound: 'direct',
+  },
+];
 
     const config = {
       log: {
