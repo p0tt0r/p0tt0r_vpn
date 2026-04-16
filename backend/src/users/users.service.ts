@@ -138,24 +138,33 @@ export class UsersService {
 
     const vpnHost = process.env.VPN_HOST!;
     const vpnPort = Number(process.env.VPN_PORT!);
-    const sni = process.env.VPN_SNI!;
     const publicKey = process.env.VPN_PUBLIC_KEY!;
     const shortId = process.env.VPN_SHORT_ID!;
 
+    // 🔥 ОБНОВЛЕННЫЕ RULES
     const routeRules = [
-  {
-    ip_cidr: ['127.0.0.0/8', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
-    outbound: 'direct',
-  },
-  {
-    geoip: ['private', 'ru'],
-    outbound: 'direct',
-  },
-  {
-    geosite: ['ru'],
-    outbound: 'direct',
-  },
-];
+      {
+        geosite: ['tiktok'],
+        outbound: 'proxy',
+      },
+      {
+        ip_cidr: [
+          '127.0.0.0/8',
+          '10.0.0.0/8',
+          '172.16.0.0/12',
+          '192.168.0.0/16',
+        ],
+        outbound: 'direct',
+      },
+      {
+        geoip: ['private', 'ru'],
+        outbound: 'direct',
+      },
+      {
+        geosite: ['ru'],
+        outbound: 'direct',
+      },
+    ];
 
     const config = {
       log: {
@@ -170,7 +179,7 @@ export class UsersService {
           },
           {
             tag: 'dns-direct',
-            address: 'local',
+            address: '8.8.8.8', // 🔥 изменили
             detour: 'direct',
           },
         ],
@@ -194,7 +203,7 @@ export class UsersService {
           flow: 'xtls-rprx-vision',
           tls: {
             enabled: true,
-            server_name: sni,
+            server_name: 'api.tiktok.com', // 🔥 изменили
             reality: {
               enabled: true,
               public_key: publicKey,
@@ -203,6 +212,9 @@ export class UsersService {
           },
           transport: {
             type: 'tcp',
+          },
+          tcp: {
+            no_delay: true, // 🔥 добавили
           },
         },
         {

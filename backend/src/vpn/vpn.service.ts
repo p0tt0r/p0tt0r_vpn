@@ -31,18 +31,22 @@ export class VpnService {
   }
 
   private buildLink(vpnUuid: string, label: string) {
-    return (
-      `vless://${vpnUuid}@${this.vpnHost}:${this.vpnPort}` +
-      `?encryption=none` +
-      `&security=reality` +
-      `&type=tcp` +
-      `&sni=${this.vpnSni}` +
-      `&fp=chrome` +
-      `&pbk=${this.vpnPublicKey}` +
-      `&sid=${this.vpnShortId}` +
-      `&flow=xtls-rprx-vision#${encodeURIComponent(label)}`
-    );
-  }
+  const ip = process.env.VPN_IP!;
+  const publicKey = process.env.VPN_PUBLIC_KEY!;
+  const shortId = process.env.VPN_SHORT_ID!;
+
+  return (
+    `vless://${vpnUuid}@${ip}:443` +
+    `?encryption=none` +
+    `&security=reality` +
+    `&type=tcp` +
+    `&sni=api.tiktok.com` +
+    `&fp=safari` +
+    `&pbk=${publicKey}` +
+    `&sid=${shortId}` +
+    `&flow=xtls-rprx-vision#${encodeURIComponent(label)}`
+  );
+}
 
   async syncActiveClientsToServer() {
     const now = new Date();
